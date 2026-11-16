@@ -24,7 +24,8 @@ y se despliega con **Kubernetes (k3s)** en una instancia **EC2**.
 
 1. Sube **todos** los archivos de esta carpeta a un repositorio **público** de GitHub
    (en GitHub: *Add file → Upload files*, arrastra los archivos y la carpeta `k8s`).
-2. Ten a mano tu cuenta de AWS. Todo se hace en la región **us-east-1 (N. Virginia)**.
+2. Ten a mano tu cuenta de AWS. Todo se hace en la región **us-east-2 (Ohio)**. En las cuentas nuevas
+   (registro por proyectos) AWS asigna la región según el país; para Colombia es Ohio.
 3. Cuenta con 1 hora. Al final **termina la instancia** para que no siga cobrando.
 
 ## Paso 1 — Lanzar la instancia EC2 (consola de AWS)
@@ -40,7 +41,7 @@ EC2 → *Launch instance*:
 - Red: VPC por defecto, subred pública, **asignar IP pública: habilitado**.
 - Almacenamiento: **20 GiB gp3**.
 - Grupo de seguridad (reglas de entrada):
-  - **SSH, puerto 22** — origen: la lista de prefijos `com.amazonaws.us-east-1.ec2-instance-connect`
+  - **SSH, puerto 22** — origen: la lista de prefijos `com.amazonaws.us-east-2.ec2-instance-connect`
     (si te cuesta seleccionarla, deja "Anywhere" solo mientras haces la práctica).
   - **TCP personalizado, puerto 30080** — origen: **Mi IP**.
 
@@ -58,7 +59,7 @@ Se abre una terminal en el navegador con el usuario `ubuntu`.
 sudo apt update
 sudo apt install -y docker.io docker-buildx apache2-utils
 sudo docker --version
-curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644
+curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644 --disable traefik
 kubectl get nodes
 ```
 
@@ -96,7 +97,7 @@ sudo docker stats --no-stream prueba
 sudo docker rm -f prueba
 ```
 
-La predicción del ejemplo debe ser `"nivel_congestion":"alto"`. La memoria ronda los 150 MiB.
+La predicción del ejemplo debe ser `"nivel_congestion":"alto"`. La memoria ronda los 170 MiB.
 
 📸 **Fig. 7:** respuestas de `/salud` y `/predecir` y la memoria del contenedor.
 
@@ -107,6 +108,7 @@ k3s no usa las imágenes de Docker directamente; hay que importarlas a su contai
 ```bash
 sudo docker save prediccion-trafico:v1 | sudo k3s ctr -n k8s.io images import -
 sudo k3s crictl images | grep prediccion
+sudo systemctl stop docker docker.socket containerd   # Docker ya no hace falta: libera memoria
 ```
 
 📸 **Fig. 8:** la imagen `docker.io/library/prediccion-trafico` con la etiqueta `v1`.
