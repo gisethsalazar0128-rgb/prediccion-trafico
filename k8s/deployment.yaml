@@ -1,0 +1,56 @@
+# Deployment: le dice a Kubernetes cuantas copias (pods) del modelo mantener
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prediccion-trafico
+  labels:
+    app: prediccion-trafico
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: prediccion-trafico
+  template:
+    metadata:
+      labels:
+        app: prediccion-trafico
+    spec:
+      containers:
+        - name: api
+          image: prediccion-trafico:v1
+          # La imagen se importa a mano en el nodo, por eso no se descarga de internet.
+          # En EKS aqui iria la URI de ECR y se quitaria esta linea.
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 192Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi
+          readinessProbe:          # cuando el pod esta listo para recibir trafico
+            httpGet:
+              path: /salud
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:           # si deja de responder, Kubernetes lo reinicia
+            httpGet:
+              path: /salud
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: temporal
+              mountPath: /tmp
+      volumes:
+        - name: temporal           # almacenamiento temporal: se borra cuando el pod muere
+          emptyDir:
+            sizeLimit: 100Mi
